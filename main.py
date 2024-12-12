@@ -101,6 +101,8 @@ else:
 
 
 if "index_name" in st.session_state and st.session_state["index_name"]!=index_name:
+    pc = Pinecone(api_key="pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key="AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw")
     index = pc.Index(index_name)
     vector_store = PineconeVectorStore(index=index, embedding=embeddings)
     st.session_state["index_name"]=index_name
