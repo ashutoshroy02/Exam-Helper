@@ -60,7 +60,7 @@ st.markdown('<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Pad
 
 # Sidebar and configuration
 st.sidebar.markdown("""<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True)
-index_name = st.sidebar.text_input("Doc Name", value="ml-docs", help="Enter the name of the index to use.")
+index_name = st.sidebar.selectbox( "Doc Name", options=["pma-docs", "ml-docs"], index=0, help="Select the name of the Documents to use." )
 groq_api_key = st.sidebar.text_input("LLM API Key", type="password", help="Enter your groq API key.")
 
 if not groq_api_key:
@@ -74,24 +74,7 @@ if use_chat_history:
     use_vector_store, use_web = False, False
 
 
-def img_to_ques(img,query):
-    genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    prompt = f"""Analyze the provided image and the query: "{query}". Based on the content of the image:
 
-1. Extract the question from the image, focusing only on the problem statement.
-2. For any tabular , structured data or mcq or anyother relevant information present in the image, provide it in the "Relevant Information" section.
-
-Format your response as follows:
-
-Question:  
-[Generated question based on the image and query]  
-
-Relevant Information:  
-[Include any tabular data, key details, or insights relevant to solving the problem. Ensure structured data is presented in an easily readable format.]
-
-"""
-    return model.generate_content([prompt, img]).text
 
 # Instructions
 st.sidebar.markdown("""
@@ -110,10 +93,19 @@ if "vector_store" not in st.session_state and groq_api_key:
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key="AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw")
     index = pc.Index(index_name)
     vector_store = PineconeVectorStore(index=index, embedding=embeddings)
+    st.session_state["index_name"]=index_name
     st.session_state["vector_store"] = vector_store
-    st.success("Successfully connected to the Vector Database! let's go...")
+    st.success(f"Successfully connected to the Vector Database:- {index_name}! let's go...")
 else:
     vector_store = st.session_state.get("vector_store", None)
+
+
+if "index_name" in st.session_state and st.session_state["index_name"]!=index_name:
+    index = pc.Index(index_name)
+    vector_store = PineconeVectorStore(index=index, embedding=embeddings)
+    st.session_state["index_name"]=index_name
+    st.session_state["vector_store"] = vector_store
+    st.success(f"Successfully connected to the Vector Database:- {index_name}! let's go...")
 
 # LLM API Key check
 if groq_api_key:
@@ -260,6 +252,26 @@ def respond_to_user(query, context, llm):
 
     return response
 
+
+def img_to_ques(img,query,model="gemini-1.5-flash"):
+    genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
+    model = genai.GenerativeModel(model)
+    prompt = f"""Analyze the provided image and the user's query: "{query}". Based on the content of the image:
+
+1. Extract the question from the image, if user wants to asks more question add it to the Question Section.
+2. For any tabular , structured data or mcq or anyother relevant information present in the image, provide it in the "Relevant Information" section.
+
+Format your response as follows:
+
+Question:  
+[Generated question based on the image and query]  
+
+Relevant Information:  
+[Include any tabular data, key details, or insights relevant to solving the problem. Ensure structured data is presented in an easily readable format.]
+
+"""
+    return model.generate_content([prompt, img]).text
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -273,7 +285,10 @@ if groq_api_key:
             if user_inp["images"]:
                 b64_image=user_inp["images"][0].split(",")[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64_image)))
-                question = img_to_ques(image, user_inp["text"])
+                try:
+                    question = img_to_ques(image, user_inp["text"])
+                except:
+                    question = img_to_ques(image, user_inp["text"],"gemini-2.0-flash-exp")
                 user_inp["text"]=""
 
             st.session_state.messages.append({"role": "user", "content": question+user_inp["text"]})
