@@ -6,6 +6,9 @@
 
 > Padh le yaar...
 
+
+### [**Hosted App**](https://good-boy.streamlit.app/)
+
 **Bhala Manus** is an AI-powered study assistant designed to help you ace your computer science courses without the fear of backlogs. It leverages advanced language models, vector databases, and web search capabilities to provide you with comprehensive and easy-to-understand explanations, making learning a breeze.
 
 ## ✨ Features
@@ -29,8 +32,8 @@
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/Bhala-Manus.git
-    cd Bhala-Manus
+    https://github.com/IsNoobgrammer/Exam-Helper.git
+    cd Exam-Helper
     ```
 
 2. **Install dependencies:**
