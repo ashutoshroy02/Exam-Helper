@@ -147,7 +147,8 @@ model = st.sidebar.selectbox("Select Model",options=["llama-3.3-70b-versatile","
 if not groq_api_key:
     st.sidebar.markdown("<p style='color: #f44336;'>Please enter the LLM API key to proceed!</p>", unsafe_allow_html=True)
     st.warning("Please enter the LLM API key to proceed!")
-
+    st.write('''**Find your Key [Groq](https://console.groq.com/keys)**''')
+    
 use_web = st.sidebar.checkbox("Allow Internet Access", value=True)
 use_vector_store = st.sidebar.checkbox("Use Documents", value=True)
 use_chat_history = st.sidebar.checkbox("Use Chat History (Last 2 Chats)", value=False)
