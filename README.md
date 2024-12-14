@@ -1,7 +1,7 @@
 # 🌟 Bhala Manus: No BackLog Abhiyan 🌟
 
 <p align="center">
-  <img src="" alt="Project Logo">
+  <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT81LIjm080VFPYpMizkeSMnjfNENB0poYT8Q&s" alt="Project Logo">
 </p>
 
 > Padh le yaar...
@@ -82,6 +82,14 @@
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
+
+### Current Contributors
+
+We would like to thank the following contributors for their valuable contributions to the project:
+
+<a href="https://github.com/IsNoobgrammer/Exam-Helper/contributors">
+  <img src="https://contrib.rocks/image?repo=IsNoobgrammer/Exam-Helper" />
+</a>
 
 ## 📄 License
 
