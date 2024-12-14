@@ -14,44 +14,124 @@ import streamlit as st
 
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
 
+
+css = """
+<style>
+/* Make header background transparent */
+.stApp > header {
+    background-color: transparent !important;
+}
+
+/* Apply animated gradient background */
+.stApp {
+    background: linear-gradient(45deg, #3a5683 10%, #0E1117 45%, #0E1117 55%, #3a5683 90%);
+    animation: gradientAnimation 20s ease infinite;
+    background-size: 200% 200%;
+    background-attachment: fixed;
+}
+
+/* Keyframes for smooth animation */
+@keyframes gradientAnimation {
+    0% {
+        background-position: 0% 0%;
+    }
+    50% {
+        background-position: 100% 100%;
+    }
+    100% {
+        background-position: 0% 0%;
+    }
+}
+</style>
+
+"""
+st.markdown(css, unsafe_allow_html=True)
+
+# HTML content
+html = """
+<section id="up"></section>
+<section id="down"></section>
+<section id="left"></section>
+<section id="right"></section>
+"""
+
+
+def render_frontend():
+    st.markdown(css, unsafe_allow_html=True)
+    st.markdown(html, unsafe_allow_html=True)
+
 st.markdown("""
-    <style>
-    .main {
-        font-family: 'Arial', sans-serif;
-        background-color: #454545;
-        color: #fff;
-    }
-    .header {
-        text-align: center;
-        color: #47fffc;
-        font-size: 36px;
-        font-weight: bold;
-    }
-    .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        border-radius: 10px;
-        font-size: 16px;
-    }
-    .stTextInput>div>input {
-        background-color: #ffffff;
-        border-radius: 10px;
-        border: 1px solid #4CAF50;
-        padding: 10px;
-        font-size: 16px;
-    }
-    .stCheckbox>div>label {
-        font-size: 16px;
-        color: #4CAF50;
-    }
-    .stChatInput>div>input {
-        background-color: #e8f5e9;
-        border: 1px solid #81c784;
-    }
-    .stMarkdown {
-        font-size: 16px;
-    }
-    </style>
+<style>
+.main {
+    font-family: 'Arial', sans-serif;
+    background-color: #454545;
+    color: #fff;
+}
+.header {
+    text-align: center;
+    color: #47fffc;
+    font-size: 36px;
+    font-weight: bold;
+}
+.stButton>button {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 10px;
+    font-size: 16px;
+}
+.stTextInput>div>input {
+    background-color: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #4CAF50;
+    padding: 10px;
+    font-size: 16px;
+}
+.stCheckbox>div>label {
+    font-size: 16px;
+    color: #4CAF50;
+}
+.stChatInput>div>input {
+    background-color: #e8f5e9;
+    border: 1px solid #81c784;
+}
+.stMarkdown {
+    font-size: 16px;
+}
+
+.stChatMessage > div {
+    border-radius: 12px;
+    padding: 12px;
+    margin: 8px 0; /* General spacing for top and bottom */
+    font-family: "Arial", sans-serif;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+}
+
+/* User messages (Dark with 60% opacity, right indent) */
+.stChatMessage > div.user {
+    background-color: rgba(13, 9, 10, 0.6); /* Smoky Black with 60% opacity */
+    color: #EAF2EF; /* Mint Cream for text contrast */
+    border-left: 4px solid #361F27; /* Dark Purple accent */
+    margin-left: 32px; /* General left margin */
+    margin-right: 64px; /* Right indent for user messages */
+}
+
+/* Assistant messages (Light Lavender with 40% opacity, left indent) */
+.stChatMessage > div.assistant {
+    background-color: rgba(70, 40, 90, 0.6); /* Royal purple for assistant messages */
+    color: #F5D7FF; /* Lavender text for a softer, friendly vibe */
+    border-left: 4px solid #BB8FCE;
+    margin-left: 64px; /* Left indent for assistant messages */
+    margin-right: 32px; /* General right margin */
+}
+
+/* Hover effects for smooth interaction */
+.stChatMessage > div:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease-in-out;
+    filter: brightness(1.1); /* Slight brightness boost */
+}
+
+</style>
 """, unsafe_allow_html=True)
 
 # Header and message below it
@@ -62,13 +142,16 @@ st.markdown('<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Pad
 st.sidebar.markdown("""<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True)
 index_name = st.sidebar.selectbox( "Doc Name", options=["pma-docs", "ml-docs"], index=0, help="Select the name of the Documents to use." )
 groq_api_key = st.sidebar.text_input("LLM API Key", type="password", help="Enter your groq API key.")
-
+model = st.sidebar.selectbox("Select Model",options=["llama-3.3-70b-versatile","llama-3.1-70b-versatile","llama-3.1-8b-instant","llama-3.2-90b-vision-preview"],
+    index=0,help="Select the model to use for LLM inference.")
 if not groq_api_key:
     st.sidebar.markdown("<p style='color: #f44336;'>Please enter the LLM API key to proceed!</p>", unsafe_allow_html=True)
+    st.warning("Please enter the LLM API key to proceed!")
 
 use_web = st.sidebar.checkbox("Allow Internet Access", value=True)
 use_vector_store = st.sidebar.checkbox("Use Documents", value=True)
 use_chat_history = st.sidebar.checkbox("Use Chat History (Last 2 Chats)", value=False)
+
 
 if use_chat_history:
     use_vector_store, use_web = False, False
@@ -112,15 +195,29 @@ if "index_name" in st.session_state and st.session_state["index_name"]!=index_na
 # LLM API Key check
 if groq_api_key:
     if "llm" not in st.session_state:
-        llm = ChatGroq(temperature=0.2, model="llama-3.1-70b-versatile", api_key=groq_api_key)
+        llm = ChatGroq(temperature=0.2, model=model, api_key=groq_api_key)
         st.session_state["llm"] = llm
+        st.session_state["model"]=model
+        st.session_state["api_key"]=groq_api_key
     else:
         llm = st.session_state["llm"]
+    
+if "api_key" in st.session_state and "model" in st.session_state:
+    if groq_api_key != st.session_state["api_key"] or model != st.session_state["model"]:
+        llm = ChatGroq(temperature=0.2, model=model, api_key=groq_api_key)
+        st.session_state["llm"] = llm
+        st.session_state["model"]=model
+        st.session_state["api_key"]=groq_api_key
+
 
 def display_chat_history():
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+        if message["role"]=="user":
+            with st.chat_message(message["role"],avatar="👼"):
+                st.write(message["content"])
+        else:
+            with st.chat_message(message["role"],avatar="🧑‍🏫"):
+                st.write(message["content"])
 
 # Function to Clean RAG Data
 def clean_rag_data(query, context, llm):
@@ -226,7 +323,7 @@ def get_context(query):
 # Function to Respond to User Based on Query and Context
 def respond_to_user(query, context, llm):
     system_prompt = """
-    You are an Assistant specialized in Machine Learning (ML) tasks. Your job is to answer the given question based on the following types of context: 
+    You are a specialized proffesor of Computer Science Engg. Your job is to answer the given question based on the following types of context: 
 
     1. **Web Data**: Information retrieved from web searches.
     2. **Documents Data**: Data extracted from documents (e.g., research papers, reports).
@@ -299,10 +396,7 @@ if groq_api_key:
                 assistant_response = respond_to_user(question+user_inp["text"], context, llm)
             st.session_state.messages.append({"role": "assistant", "content": assistant_response})
 
-            with st.chat_message("user"):
+            with st.chat_message("user",avatar="👼"):
                 st.write(question+user_inp["text"])
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant",avatar="🧑‍🏫"):
                 st.write(assistant_response)
-
-
-            
