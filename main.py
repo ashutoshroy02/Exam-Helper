@@ -7,7 +7,6 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
 from PIL import Image
-from youtube_transcript_api import YouTubeTranscriptApi
 from st_multimodal_chatinput import multimodal_chatinput
 import base64,io,re
 
@@ -352,10 +351,44 @@ def respond_to_user(query, context, llm):
 
     return response
 
-def process_youtube(video_id, original_text):
-    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
-    text = " ".join([item['text'] for item in transcript if 'text' in item])
+def yT_transcript(link):
+    import re
+    import html
+    import requests as r
+    url = 'https://youtubetotranscript.com/transcript'
+    payload = {
+        'youtube_url': link
+    }
+    response = r.post(url, data=payload).text
+    return ' '.join([html.unescape(i) for i in re.findall(r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*<\/span>', response)])
 
+def yt_t8ts(text):
+    from mistralai import Mistral
+    model = "mistral-large-latest"
+    client = Mistral(api_key='r1u9jBlZye7QrH3ymxkJjAMVd4VLoSEA')
+
+    chat_response = client.chat.complete(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that translates any text into English, "
+                           "regardless of the original language. Ensure all details from the original text "
+                           "are retained without omission, and the translation should be accurate and fluent."
+            },
+            {
+                "role": "user",
+                "content": f'Transcribed text: \n\n{text}',
+            },
+        ]
+    )
+
+    return chat_response.choices[0].message.content
+def process_youtube(video_id, original_text):
+    transcript = yT_transcript(f'https://www.youtube.com/watch?v={video_id}')
+    if len(transcript) == 0:
+        raise IndexError
+    transcript = yt_t8ts(transcript)
     system_prompt = """
 You are Explainer Bot, a highly intelligent and efficient assistant designed to analyze YouTube video transcripts and respond comprehensively to user queries. You excel at providing explanations tailored to the user’s needs, whether they seek examples, detailed elaboration, or specific insights.
 
@@ -379,6 +412,9 @@ You are Explainer Bot, a highly intelligent and efficient assistant designed to 
   - Always address the user’s specific needs while keeping the overall purpose of the video in focus.
 
 **Output Style:**
+- Always respond using **Markdown** format, avoiding LaTeX or any other non-Markdown formatting.
+  - Avoid using any LaTeX symbols or complex formatting.
+  - Ensure your response is easy to read and compatible with a frontend that supports Markdown.
 - Tailor the response to the user’s request:
   - Provide examples when explicitly asked.
   - Offer detailed and comprehensive explanations if required.
@@ -407,11 +443,9 @@ User's Query:
 
     rag_chain = rag_chain_prompt | llm | StrOutputParser()
 
-    response = rag_chain.invoke({"transcription": text, "query": original_text})
+    response = rag_chain.invoke({"transcription": transcript, "query": original_text})
 
     return response
-
-
 
 
 def img_to_ques(img,query,model="gemini-1.5-flash"):
@@ -442,6 +476,7 @@ if groq_api_key:
         user_inp = multimodal_chatinput()
     with st.container():
         if user_inp:
+            video_id=""
             question=""
             if user_inp["images"]:
                 b64_image=user_inp["images"][0].split(",")[-1]
@@ -450,24 +485,34 @@ if groq_api_key:
                     question = img_to_ques(image, user_inp["text"])
                 except:
                     question = img_to_ques(image, user_inp["text"],"gemini-2.0-flash-exp")
-                user_inp["text"]=""
-            soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
-            video_id=soln[0]
-            if video_id != ["",""] :
-                if video_id[0] == "":
-                    video_id=video_id[1]
+                soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
+                video_id=soln[0]
+                if video_id != ["",""] :
+                    if video_id[0] == "":
+                        video_id=video_id[1]
+                    else:
+                        video_id=video_id[0]
                 else:
-                    video_id=video_id[0]
-            else:
-                video_id=""
+                    video_id=""
+                user_inp["text"]=""
+            if not video_id:
+                soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
+                video_id=soln[0]
+                if video_id != ["",""] :
+                    if video_id[0] == "":
+                        video_id=video_id[1]
+                    else:
+                        video_id=video_id[0]
+                else:
+                    video_id=""
             st.session_state.messages.append({"role": "user", "content": question+user_inp["text"]})
             with st.spinner(":green[Processing Youtube Video]"):
                 if video_id:
                     st.success(f"!! Youtube Link Found:- {video_id} , Summarizing Video")
                     try:
                         yt_response=process_youtube(video_id,question+user_inp["text"])
-                    except:
-                        yt_response="Unable to Process , Youtube Video Due to Rate limits , Please Try after sometime"
+                    except Exception as e:
+                        yt_response=f"Unable to Process , Youtube Video Due to Transcript not available Error: {e}"
                     st.session_state.messages.append({"role": "assistant", "content": yt_response})
                     with st.chat_message("user",avatar="👼"):
                         st.write(question+user_inp["text"])
