@@ -8,4 +8,5 @@ langchain-google-genai
 duckduckgo-search
 streamlit
 st-multimodal-chatinput
-youtube-transcript-api
+mistralai
+requests
