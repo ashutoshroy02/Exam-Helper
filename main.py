@@ -7,8 +7,9 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
 from PIL import Image
+from youtube_transcript_api import YouTubeTranscriptApi
 from st_multimodal_chatinput import multimodal_chatinput
-import base64,io
+import base64,io,re
 
 import streamlit as st
 
@@ -140,7 +141,7 @@ st.markdown('<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Pad
 
 # Sidebar and configuration
 st.sidebar.markdown("""<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True)
-index_name = st.sidebar.selectbox( "Doc Name", options=["pma-docs", "ml-docs"], index=0, help="Select the name of the Documents to use." )
+index_name = st.sidebar.selectbox( "Doc Name", options=["cns-docs","dbms-docs","pma-docs", "ml-docs"], index=0, help="Select the name of the Documents to use." )
 groq_api_key = st.sidebar.text_input("LLM API Key", type="password", help="Enter your groq API key.")
 model = st.sidebar.selectbox("Select Model",options=["llama-3.3-70b-versatile","llama-3.1-70b-versatile","llama-3.1-8b-instant","llama-3.2-90b-vision-preview"],
     index=0,help="Select the model to use for LLM inference.")
@@ -294,7 +295,7 @@ def get_context(query):
 
     if use_vector_store:
         with st.spinner(":green[Extracting Data From VectorStore...]"):
-            result = "\n\n".join([_.page_content for _ in vector_store.similarity_search(query, k=3)])
+            result = "\n\n".join([_.page_content for _ in vector_store.similarity_search(query, k=2)])
             clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llm)
             context += f"Documents Data: \n\n{clean_data}"
 
@@ -351,6 +352,67 @@ def respond_to_user(query, context, llm):
 
     return response
 
+def process_youtube(video_id, original_text):
+    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "hi"])
+    text = " ".join([item['text'] for item in transcript if 'text' in item])
+
+    system_prompt = """
+You are Explainer Bot, a highly intelligent and efficient assistant designed to analyze YouTube video transcripts and respond comprehensively to user queries. You excel at providing explanations tailored to the user’s needs, whether they seek examples, detailed elaboration, or specific insights.
+
+**Persona:**
+- You are approachable, insightful, and skilled at tailoring responses to diverse user requests.
+- You aim to provide explanations that capture the essence of the video, ensuring a balance between clarity and depth.
+- Your tone is clear, neutral, and professional, ensuring readability and understanding for a broad audience.
+
+**Task:**
+1. Analyze the provided video transcript, which may contain informal language, repetitions, or filler words. Your job is to:
+   - Address the user’s specific query, such as providing examples, detailed explanations, or focused insights.
+   - Retain the most critical information and adapt your response style accordingly.
+2. If the video includes technical or specialized content, provide brief context or explanations where necessary to enhance comprehension.
+3. Maintain an organized structure using bullet points, paragraphs, or sections based on the user’s query.
+
+**Additional Inputs:**
+- When answering:
+  - If the user requests examples, include relevant examples or anecdotes from the transcript or generate illustrative examples.
+  - If the user requests a detailed explanation, expand on the key points, ensuring no critical information is lost.
+  - If the user’s query requires a summary, condense the content into a clear, concise explanation while retaining the key messages.
+  - Always address the user’s specific needs while keeping the overall purpose of the video in focus.
+
+**Output Style:**
+- Tailor the response to the user’s request:
+  - Provide examples when explicitly asked.
+  - Offer detailed and comprehensive explanations if required.
+  - Keep summaries concise and focused if brevity is requested.
+- Use simple, clear sentences to cater to a broad audience.
+- Avoid jargon unless it is crucial to the video's context, and provide a brief explanation if used.
+- Always Answer in English only.
+
+Act as a skilled Professor, ensuring accuracy, brevity, and clarity while retaining the original context and intent of the video. Adjust your tone and structure to match the user’s specific query and expectations.
+"""
+
+    user_prompt = """
+Transcription:
+{transcription}
+
+User's Query:
+{query}
+"""
+
+    rag_chain_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("user", user_prompt)
+        ]
+    )
+
+    rag_chain = rag_chain_prompt | llm | StrOutputParser()
+
+    response = rag_chain.invoke({"transcription": text, "query": original_text})
+
+    return response
+
+
+
 
 def img_to_ques(img,query,model="gemini-1.5-flash"):
     genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
@@ -389,14 +451,36 @@ if groq_api_key:
                 except:
                     question = img_to_ques(image, user_inp["text"],"gemini-2.0-flash-exp")
                 user_inp["text"]=""
-
+            soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
+            video_id=soln[0]
+            if video_id != ["",""] :
+                if video_id[0] == "":
+                    video_id=video_id[1]
+                else:
+                    video_id=video_id[0]
+            else:
+                video_id=""
             st.session_state.messages.append({"role": "user", "content": question+user_inp["text"]})
-            context = get_context(question+user_inp["text"])
-            with st.spinner(":green[Combining jhol jhal...]"):
-                assistant_response = respond_to_user(question+user_inp["text"], context, llm)
-            st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+            with st.spinner(":green[Processing Youtube Video]"):
+                if video_id:
+                    st.success(f"!! Youtube Link Found:- {video_id} , Summarizing Video")
+                    try:
+                        yt_response=process_youtube(video_id,question+user_inp["text"])
+                    except:
+                        yt_response="Unable to Process , Youtube Video Due to Rate limits , Please Try after sometime"
+                    st.session_state.messages.append({"role": "assistant", "content": yt_response})
+                    with st.chat_message("user",avatar="👼"):
+                        st.write(question+user_inp["text"])
+                    with st.chat_message("assistant",avatar="🧑‍🏫"):
+                        st.write(yt_response)
 
-            with st.chat_message("user",avatar="👼"):
-                st.write(question+user_inp["text"])
-            with st.chat_message("assistant",avatar="🧑‍🏫"):
-                st.write(assistant_response)
+            if not video_id:
+                context = get_context(question+user_inp["text"])
+                with st.spinner(":green[Combining jhol jhal...]"):
+                    assistant_response = respond_to_user(question+user_inp["text"], context, llm)
+                st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+
+                with st.chat_message("user",avatar="👼"):
+                    st.write(question+user_inp["text"])
+                with st.chat_message("assistant",avatar="🧑‍🏫"):
+                    st.write(assistant_response)
