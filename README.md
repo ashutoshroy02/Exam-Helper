@@ -4,35 +4,37 @@
   <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT81LIjm080VFPYpMizkeSMnjfNENB0poYT8Q&s" alt="Project Logo">
 </p>
 
-> Padh le yaar...
-
+> Padh le yaar... (Study hard, buddy!)
 
 ### [**Hosted App**](https://good-boy.streamlit.app/)
 
-**Bhala Manus** is an AI-powered study assistant designed to help you ace your computer science courses without the fear of backlogs. It leverages advanced language models, vector databases, and web search capabilities to provide you with comprehensive and easy-to-understand explanations, making learning a breeze.
+**Bhala Manus** is your AI-powered study companion, meticulously crafted to help you conquer your computer science courses and banish the fear of backlogs. This powerful tool integrates cutting-edge language models, a robust vector database, and real-time web search to deliver comprehensive, digestible explanations that make learning a joyful experience.
 
-## ✨ Features
+## ✨ Key Features
 
-*   **Context-Aware Responses:** Gets information from multiple sources:
-    *   **Web Data:** Fetches relevant information from the internet.
-    *   **Documents Data:** Extracts and summarizes data from provided documents.
-    *   **Chat History:** Remembers previous interactions to maintain context.
-    *   **LLM Data:** Utilizes the power of large language models for insightful answers.
-*   **Document Support:** Choose between different Vectorstore(Documents) for focused learning.
-*   **Multiple LLMs:** Choose between the different versions of Llama3 Models.
-*   **Customizable:**
-    *   **Internet Access:** Enable or disable web search.
-    *   **Chat History:** Toggle the use of previous chat history.
-*   **Image-Based Question Answering:** Upload images of questions or diagrams, and the app will analyze them to provide relevant answers.
-*   **User-Friendly Interface:** Beautiful and intuitive Streamlit-based UI.
-*   **Animated Gradient Background:** Because who doesn't love a bit of flair?
+*   **Multi-Source Contextual Understanding:** Bhala Manus intelligently gathers information from various sources to provide the most relevant and accurate answers:
+    *   **Web Data:** Real-time information retrieval from the internet.
+    *   **Documents Data:** Extracts key information from your chosen document sets.
+    *   **Chat History:** Maintains context by remembering previous interactions (optional).
+    *   **LLM Data:** Harnesses the power of large language models for insightful responses.
+*   **Document Versatility:** Choose between different Vectorstore(Documents) for focused learning on specific topics like *cns, dbms, pma and ml*
+*   **Advanced LLM Selection:** Choose between various versions of the Llama 3 Models, each optimized for different needs.
+*   **Enhanced Customization:**
+    *   **Internet Access:** Decide whether to allow web search during the session.
+    *   **Chat History:** Choose to enable or disable the use of previous chat history.
+*   **Multimedia Query Support:**
+    *  **Image-Based Question Answering:** Upload images of questions, diagrams, or even complex tables and get analyzed, detailed responses.
+    *  **YouTube Video Summarization:** Simply input a YouTube link and the tool will provide a comprehensive summary of the video, tailored to your queries, and give transcriptions as well.
+*   **Streamlined User Experience:**
+    *   Intuitive and visually appealing Streamlit-based user interface.
+    *   Engaging animated gradient background to make learning fun.
 
 ## ⚙️ Installation
 
 1. **Clone the repository:**
 
     ```bash
-    https://github.com/IsNoobgrammer/Exam-Helper.git
+    git clone https://github.com/IsNoobgrammer/Exam-Helper.git
     cd Exam-Helper
     ```
 
@@ -42,50 +44,53 @@
     pip install -r requirements.txt
     ```
 
-3. **Get Your API Keys:**
-    *   **Groq API Key:** Create a free account on [Groq](https://console.groq.com/keys) to get your API key.
+3.  **Acquire API Keys:**
+    *   **Groq API Key:** Sign up for a free account on [Groq](https://console.groq.com/keys) to obtain your unique API key.
 
 ## 🚀 Usage
 
-1. **Run the Streamlit app:**
+1.  **Launch the Streamlit app:**
 
     ```bash
     streamlit run main.py
     ```
 
-2. **Configure:**
+2.  **Configure Your Environment:**
     *   Enter your **Groq API key** in the sidebar.
-    *   Select the **model** you want to use for LLM inference.
-    *   Choose your preferred **document set** (if using vector store).
-    *   Enable/disable **Internet access** and **chat history**.
+    *   Select your preferred **Llama 3 model** for LLM inference.
+    *   Choose your specific **document set** from the dropdown menu.
+    *   Toggle **Internet access** and **chat history** according to your preference.
 
-3. **Start Learning!**
-    *   Type your questions in the chat input.
-    *   Upload images containing questions or diagrams.
-    *   Get comprehensive answers powered by AI.
+3.  **Dive into Learning!**
+    *   Type in your questions, upload images, or input YouTube links.
+    *   Experience the power of AI as it delivers tailored responses.
+    *   Make sure to ask *meating-meeting* Questions.
 
 ## 🛠️ Dependencies
 
-*   **LangChain:** Framework for building LLM applications.
-*   **Groq:** For accessing powerful language models like Llama-3.
-*   **Pinecone:** For vector database functionalities (if enabled).
-*   **Google Generative AI:** For embeddings.
-*   **DuckDuckGo Search:** For web search capabilities.
-*   **Streamlit:** For creating the user interface.
-*   **Pillow (PIL):** For image processing.
+*   **LangChain:** A versatile framework for building sophisticated LLM-powered applications.
+*   **Groq:** For accessing cutting-edge language models like the Llama 3 series.
+*   **Pinecone:** For robust vector database management (if using document sets).
+*   **Google Generative AI:** For high-performance embedding services.
+*   **DuckDuckGo Search:** For fetching real-time data from the web.
+*   **Streamlit:** For building a responsive and engaging user interface.
+*   **Pillow (PIL):** For advanced image processing capabilities.
+*   **YouTube Transcript API:** To extract transcriptions from the YouTube video for summaries.
+*  **st-multimodal-chatinput:** For handling multi-modal inputs like images.
+
 
 ## 🙏 Acknowledgements
 
-*   The creators of the awesome libraries and services used in this project.
-*   Anyone who has ever struggled with backlogs (you are not alone!).
+*   We extend our sincere gratitude to the creators of the fantastic libraries and services that power this project.
+*   To everyone who has ever faced a backlog - this app is for you!
 
 ## 🤝 Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests.
+We welcome contributions! Feel free to submit issues or open pull requests to improve this project.
 
 ### Current Contributors
 
-We would like to thank the following contributors for their valuable contributions to the project:
+We appreciate the valuable contributions of the following developers:
 
 <a href="https://github.com/IsNoobgrammer/Exam-Helper/contributors">
   <img src="https://contrib.rocks/image?repo=IsNoobgrammer/Exam-Helper" />
@@ -93,7 +98,7 @@ We would like to thank the following contributors for their valuable contributio
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+This project is licensed under the Apache License - see the `LICENSE` file for details.
 
 ---
 
