@@ -16,8 +16,8 @@ import streamlit as st
 try:
     from langchain_pinecone import PineconeVectorStore
 except:
-    import os
-    os.system("uv pip install langchain-pinecone pinecone langchain-google-genai -U --force-reinstall")
+    import subprocess
+    subprocess.run('pip install langchain-pinecone pinecone langchain-google-genai -U --force-reinstall', stdout=subprocess.PIPE, shell=True)
     from langchain_pinecone import PineconeVectorStore
 
 
