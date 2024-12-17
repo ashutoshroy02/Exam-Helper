@@ -5,20 +5,13 @@ from pinecone import Pinecone
 from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
 from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
+from langchain_pinecone import PineconeVectorStore
 from PIL import Image
 from st_multimodal_chatinput import multimodal_chatinput
 import base64,io,re,html
 from langchain_mistralai import ChatMistralAI
 import requests as r
 import streamlit as st
-
-
-try:
-    from langchain_pinecone import PineconeVectorStore
-except:
-    import subprocess
-    subprocess.run('pip install langchain-pinecone pinecone langchain-google-genai -U --force-reinstall', stdout=subprocess.PIPE, shell=True)
-    from langchain_pinecone import PineconeVectorStore
 
 
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
