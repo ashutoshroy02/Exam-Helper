@@ -8,8 +8,9 @@ from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
 from PIL import Image
 from st_multimodal_chatinput import multimodal_chatinput
-import base64,io,re
-
+import base64,io,re,html
+from langchain_mistralai import ChatMistralAI
+import requests as r
 import streamlit as st
 
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
@@ -209,6 +210,8 @@ if "api_key" in st.session_state and "model" in st.session_state:
         st.session_state["model"]=model
         st.session_state["api_key"]=groq_api_key
 
+llmx=ChatMistralAI(model="mistral-large-latest",temperature=0.3,api_key="r1u9jBlZye7QrH3ymxkJjAMVd4VLoSEA")
+
 
 def display_chat_history():
     for message in st.session_state.messages:
@@ -294,15 +297,15 @@ def get_context(query):
 
     if use_vector_store:
         with st.spinner(":green[Extracting Data From VectorStore...]"):
-            result = "\n\n".join([_.page_content for _ in vector_store.similarity_search(query, k=2)])
-            clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llm)
+            result = "\n\n".join([_.page_content for _ in vector_store.similarity_search(query, k=4)])
+            clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llmx)
             context += f"Documents Data: \n\n{clean_data}"
 
     if use_chat_history:
         with st.spinner(":green[Extracting Data From ChatHistory...]"):
-            last_messages = st.session_state.messages[:-1][-3:]
+            last_messages = st.session_state.messages[:-3][-5:]
             chat_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in last_messages])
-            clean_data = clean_rag_data(query, f"\n\nChat History \n\n{chat_history}", llm)
+            clean_data = clean_rag_data(query, f"\n\nChat History \n\n{chat_history}", llmx)
             context += f"\n\nChat History: \n\n{clean_data}"
 
     try:
@@ -352,9 +355,6 @@ def respond_to_user(query, context, llm):
     return response
 
 def yT_transcript(link):
-    import re
-    import html
-    import requests as r
     url = 'https://youtubetotranscript.com/transcript'
     payload = {
         'youtube_url': link
@@ -362,33 +362,11 @@ def yT_transcript(link):
     response = r.post(url, data=payload).text
     return ' '.join([html.unescape(i) for i in re.findall(r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*<\/span>', response)])
 
-def yt_t8ts(text):
-    from mistralai import Mistral
-    model = "mistral-large-latest"
-    client = Mistral(api_key='r1u9jBlZye7QrH3ymxkJjAMVd4VLoSEA')
 
-    chat_response = client.chat.complete(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that translates any text into English, "
-                           "regardless of the original language. Ensure all details from the original text "
-                           "are retained without omission, and the translation should be accurate and fluent."
-            },
-            {
-                "role": "user",
-                "content": f'Transcribed text: \n\n{text}',
-            },
-        ]
-    )
-
-    return chat_response.choices[0].message.content
 def process_youtube(video_id, original_text):
     transcript = yT_transcript(f'https://www.youtube.com/watch?v={video_id}')
     if len(transcript) == 0:
         raise IndexError
-    transcript = yt_t8ts(transcript)
     system_prompt = """
 You are Explainer Bot, a highly intelligent and efficient assistant designed to analyze YouTube video transcripts and respond comprehensively to user queries. You excel at providing explanations tailored to the user’s needs, whether they seek examples, detailed elaboration, or specific insights.
 
@@ -416,9 +394,9 @@ You are Explainer Bot, a highly intelligent and efficient assistant designed to 
   - Avoid using any LaTeX symbols or complex formatting.
   - Ensure your response is easy to read and compatible with a frontend that supports Markdown.
 - Tailor the response to the user’s request:
-  - Provide examples when explicitly asked.
+  - Provide examples when explicitly asked or when its available in transcript.
   - Offer detailed and comprehensive explanations if required.
-  - Keep summaries concise and focused if brevity is requested.
+  - Keep summaries Comprehensive and focused if brevity is requested.
 - Use simple, clear sentences to cater to a broad audience.
 - Avoid jargon unless it is crucial to the video's context, and provide a brief explanation if used.
 - Always Answer in English only.
@@ -441,7 +419,7 @@ User's Query:
         ]
     )
 
-    rag_chain = rag_chain_prompt | llm | StrOutputParser()
+    rag_chain = rag_chain_prompt | llmx | StrOutputParser()
 
     response = rag_chain.invoke({"transcription": transcript, "query": original_text})
 
