@@ -17,7 +17,7 @@ try:
     from langchain_pinecone import PineconeVectorStore
 except:
     import os
-    os.system("pip install langchain-pinecone -U")
+    os.system("pip install langchain-pinecone pinecone langchain-google-genai -U --force-reinstall")
     from langchain_pinecone import PineconeVectorStore
 
 
