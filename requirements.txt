@@ -1,13 +1,12 @@
-langchain-mistralai
-mistralai
-langchain-groq
 langchain
 langchain-community
 langchain-core
-langchain-google-genai
-pinecone
-langchain-pinecone
 duckduckgo-search
 streamlit
+langchain-mistralai
+langchain-google-genai
+langchain-pinecone
+pinecone
+langchain-groq
 st-multimodal-chatinput
 
