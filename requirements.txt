@@ -1,4 +1,6 @@
 pinecone
+langchain-mistralai
+mistralai
 langchain-pinecone
 langchain-groq
 langchain
@@ -8,5 +10,4 @@ langchain-google-genai
 duckduckgo-search
 streamlit
 st-multimodal-chatinput
-mistralai
-requests
+
