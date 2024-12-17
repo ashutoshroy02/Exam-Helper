@@ -18,6 +18,7 @@ try:
 except:
     import os
     os.system("pip install langchain-pinecone -U")
+    from langchain_pinecone import PineconeVectorStore
 
 
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
