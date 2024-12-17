@@ -3,7 +3,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from pinecone import Pinecone
 from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
 from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
 from PIL import Image
@@ -12,6 +11,14 @@ import base64,io,re,html
 from langchain_mistralai import ChatMistralAI
 import requests as r
 import streamlit as st
+
+
+try:
+    from langchain_pinecone import PineconeVectorStore
+except:
+    import os
+    os.system("pip install langchain-pinecone -U")
+
 
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
 
