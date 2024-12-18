@@ -388,8 +388,9 @@ You are Explainer Bot, a highly intelligent and efficient assistant designed to 
 1. Analyze the provided video transcript, which may contain informal language, repetitions, or filler words. Your job is to:
    - Address the user’s specific query, such as providing examples, detailed explanations, or focused insights.
    - Retain the most critical information and adapt your response style accordingly.
-2. If the video includes technical or specialized content, provide brief context or explanations where necessary to enhance comprehension.
-3. Maintain an organized structure using bullet points, paragraphs, or sections based on the user’s query.
+2. If the user query contains a YouTube link, do not panic. Use the already provided transcript of the video to answer the query. Ensure your response addresses both the content of the video and any additional parts of the user’s query.
+3. If the video includes technical or specialized content, provide brief context or explanations where necessary to enhance comprehension.
+4. Maintain an organized structure using bullet points, paragraphs, or sections based on the user’s query.
 
 **Additional Inputs:**
 - When answering:
@@ -403,15 +404,16 @@ You are Explainer Bot, a highly intelligent and efficient assistant designed to 
   - Avoid using any LaTeX symbols or complex formatting.
   - Ensure your response is easy to read and compatible with a frontend that supports Markdown.
 - Tailor the response to the user’s request:
-  - Provide examples when explicitly asked or when its available in transcript.
+  - Provide examples when explicitly asked or when they are available in the transcript.
   - Offer detailed and comprehensive explanations if required.
-  - Keep summaries Comprehensive and focused if brevity is requested.
+  - Keep summaries comprehensive and focused if brevity is requested.
 - Use simple, clear sentences to cater to a broad audience.
 - Avoid jargon unless it is crucial to the video's context, and provide a brief explanation if used.
-- Always Answer in English only.
+- Always answer in English only.
 
-Act as a skilled Professor, ensuring accuracy, brevity, and clarity while retaining the original context and intent of the video. Adjust your tone and structure to match the user’s specific query and expectations.
+Act as a skilled Professor, ensuring accuracy, brevity, and clarity while retaining the original context and intent of the video. Adjust your tone and structure to match the user’s specific query and expectations. If a YouTube link is part of the user query, use the transcript you already have to address the video-related aspects of the question seamlessly.
 """
+
 
     user_prompt = """
 Transcription:
@@ -473,25 +475,21 @@ if groq_api_key:
                 except:
                     question = img_to_ques(image, user_inp["text"],"gemini-2.0-flash-exp")
                 soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
-                video_id=soln[0]
-                if video_id != ["",""] :
-                    if video_id[0] == "":
-                        video_id=video_id[1]
+                for match in soln:
+                    video_id = match[0] or match[1]  # Use the first non-empty part
+                    if video_id:  # Stop at the first valid match
+                        break
                     else:
-                        video_id=video_id[0]
-                else:
-                    video_id=""
+                        video_id=""
                 user_inp["text"]=""
             if not video_id:
                 soln=re.findall(r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",user_inp["text"])
-                video_id=soln[0]
-                if video_id != ["",""] :
-                    if video_id[0] == "":
-                        video_id=video_id[1]
+                for match in soln:
+                    video_id = match[0] or match[1]  # Use the first non-empty part
+                    if video_id:  # Stop at the first valid match
+                        break
                     else:
-                        video_id=video_id[0]
-                else:
-                    video_id=""
+                        video_id=""
             st.session_state.messages.append({"role": "user", "content": question+user_inp["text"]})
             with st.spinner(":green[Processing Youtube Video]"):
                 if video_id:
