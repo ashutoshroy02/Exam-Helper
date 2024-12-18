@@ -355,13 +355,21 @@ def respond_to_user(query, context, llm):
 
     return response
 
+def html_entity_cleanup(text):
+    # Replace common HTML entities
+    return re.sub(r'&amp;', '&', 
+           re.sub(r'&lt;', '<', 
+           re.sub(r'&gt;', '>', 
+           re.sub(r'&quot;', '"', 
+           re.sub(r'&#39;', "'", text)))))
+
 def yT_transcript(link):
     url = 'https://youtubetotranscript.com/transcript'
     payload = {
         'youtube_url': link
     }
     response = r.post(url, data=payload).text
-    return ' '.join([html.unescape(i) for i in re.findall(r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*<\/span>', response)])
+    return ' '.join([html_entity_cleanup(i) for i in re.findall(r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*<\/span>', response)])
 
 
 def process_youtube(video_id, original_text):
