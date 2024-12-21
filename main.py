@@ -142,7 +142,7 @@ st.markdown('<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Pad
 
 # Sidebar and configuration
 st.sidebar.markdown("""<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True)
-index_name = st.sidebar.selectbox( "Doc Name", options=["coa-docs","cns-docs","dbms-docs","pma-docs"], index=0, help="Select the name of the Documents to use." )
+index_name = st.sidebar.selectbox( "Doc Name", options=["ann-docs","dbms-docs"], index=0, help="Select the name of the Documents to use." )
 groq_api_key = st.sidebar.text_input("LLM API Key", type="password", help="Enter your groq API key.")
 model = st.sidebar.selectbox("Select Model",options=["llama-3.3-70b-versatile","llama-3.1-70b-versatile","llama-3.1-8b-instant","llama-3.2-90b-vision-preview"],
     index=0,help="Select the model to use for LLM inference.")
