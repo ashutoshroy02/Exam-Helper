@@ -123,9 +123,9 @@ st.markdown(
 
 /* Hover effects for smooth interaction */
 .stChatMessage > div:hover {
-    transform: scale(1.01);
-    transition: transform 0.2s ease-in-out;
-    filter: brightness(1.05); /* Slight brightness boost */
+    transform: scale(1.0001);
+    transition: transform 0.3s ease-in-out;
+    filter: brightness(1.005); /* Slight brightness boost */
 }
 
 </style>
