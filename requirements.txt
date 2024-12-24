@@ -9,4 +9,4 @@ langchain-pinecone
 pinecone
 langchain-groq
 st-multimodal-chatinput
-
+streamlit-carousel
