@@ -123,7 +123,7 @@ st.markdown(
 
 /* Hover effects for smooth interaction */
 .stChatMessage > div:hover {
-    transform: scale(1.001);
+    transform: scale(1.005);
     transition: transform 0.2s ease-in-out;
 }
 
