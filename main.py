@@ -193,8 +193,8 @@ Kheliye *meating - meeting*
 
 # API keys for various services
 api_keys = {
-    "pinecone": "pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx",
-    "google": "AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw",
+    "pinecone": REDACTED,
+    "google": REDACTED,
     "groq": groq_api_key,
 }
 
@@ -238,7 +238,7 @@ if "api_key" in st.session_state and "model" in st.session_state:
 llmx = ChatMistralAI(
     model="mistral-large-latest",
     temperature=0.3,
-    api_key="r1u9jBlZye7QrH3ymxkJjAMVd4VLoSEA",
+    api_key=REDACTED,
 )
 
 # Initialize session state variables
