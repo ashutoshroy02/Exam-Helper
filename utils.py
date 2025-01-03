@@ -160,6 +160,7 @@ def yT_transcript(link):
 def process_youtube(video_id, original_text, llmx):
     """Processes a YouTube video transcript and answers a query."""
     transcript = yT_transcript(f"https://www.youtube.com/watch?v={video_id}")
+    
     if len(transcript) == 0:
         raise IndexError
     system_prompt = """
@@ -216,7 +217,7 @@ User's Query:
 
 def img_to_ques(img, query, model="gemini-1.5-flash"):
     """Extracts a question and relevant information from an image."""
-    genai.configure(api_key=[Redacted])
+    genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
     model = genai.GenerativeModel(model)
     prompt = f"""Analyze the provided image and the user's query: "{query}". Based on the content of the image:
 
