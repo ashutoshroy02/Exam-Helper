@@ -217,7 +217,7 @@ User's Query:
 
 def img_to_ques(img, query, model="gemini-1.5-flash"):
     """Extracts a question and relevant information from an image."""
-    genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
+    genai.configure(api_key="AIzaSyBkssLWrVkGHVa8Z5eC2c8snijh_X8d8ho")
     model = genai.GenerativeModel(model)
     prompt = f"""Analyze the provided image and the user's query: "{query}". Based on the content of the image:
 
