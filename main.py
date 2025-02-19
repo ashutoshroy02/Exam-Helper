@@ -1,19 +1,16 @@
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from pinecone import Pinecone
-from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
-from langchain_community.tools import DuckDuckGoSearchRun
-import google.generativeai as genai
-from PIL import Image
+from langchain_mistralai import ChatMistralAI
 from st_multimodal_chatinput import multimodal_chatinput
-import base64,io
-
+from streamlit_carousel import carousel
 import streamlit as st
+from PIL import Image
+import base64
+import io
+import re
 
+import utils
+
+# Streamlit Configuration and Styling
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
-
 
 css = """
 <style>
@@ -55,12 +52,12 @@ html = """
 <section id="right"></section>
 """
 
-
 def render_frontend():
     st.markdown(css, unsafe_allow_html=True)
     st.markdown(html, unsafe_allow_html=True)
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 .main {
     font-family: 'Arial', sans-serif;
@@ -126,42 +123,65 @@ st.markdown("""
 
 /* Hover effects for smooth interaction */
 .stChatMessage > div:hover {
-    transform: scale(1.02);
+    transform: scale(1.005);
     transition: transform 0.2s ease-in-out;
-    filter: brightness(1.1); /* Slight brightness boost */
 }
 
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Header and message below it
-st.markdown('<div class="header">🌟No Back Abhiyan </div>', unsafe_allow_html=True)
-st.markdown('<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Padh le yaar...</p>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="header">🌟No Back Abhiyan </div>', unsafe_allow_html=True
+)
+st.markdown(
+    '<p style="color: #dcfa2f; font-size: 18px; text-align: center;">Padh le yaar...</p>',
+    unsafe_allow_html=True,
+)
 
 # Sidebar and configuration
-st.sidebar.markdown("""<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True)
-index_name = st.sidebar.selectbox( "Doc Name", options=["pma-docs", "ml-docs"], index=0, help="Select the name of the Documents to use." )
-groq_api_key = st.sidebar.text_input("LLM API Key", type="password", help="Enter your groq API key.")
-model = st.sidebar.selectbox("Select Model",options=["llama-3.3-70b-versatile","llama-3.1-70b-versatile","llama-3.1-8b-instant","llama-3.2-90b-vision-preview"],
-    index=0,help="Select the model to use for LLM inference.")
+st.sidebar.markdown(
+    """<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True
+)
+index_name = st.sidebar.selectbox(
+    "Doc Name", options=["cc-docs","ann-docs", "dbms-docs"], index=0, help="Select the name of the Documents to use."
+)
+groq_api_key = st.sidebar.text_input(
+    "LLM API Key", type="password", help="Enter your groq API key."
+)
+model = st.sidebar.selectbox(
+    "Select Model",
+    options=[
+        "llama-3.3-70b-versatile",
+        "llama-3.1-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama-3.2-90b-vision-preview",
+    ],
+    index=0,
+    help="Select the model to use for LLM inference.",
+)
 if not groq_api_key:
-    st.sidebar.markdown("<p style='color: #f44336;'>Please enter the LLM API key to proceed!</p>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        "<p style='color: #f44336;'>Please enter the LLM API key to proceed!</p>",
+        unsafe_allow_html=True,
+    )
     st.warning("Please enter the LLM API key to proceed!")
     st.write('''**Find your Key [Groq](https://console.groq.com/keys)**''')
     
 use_web = st.sidebar.checkbox("Allow Internet Access", value=True)
 use_vector_store = st.sidebar.checkbox("Use Documents", value=True)
-use_chat_history = st.sidebar.checkbox("Use Chat History (Last 2 Chats)", value=False)
-
+use_chat_history = st.sidebar.checkbox(
+    "Use Chat History (Last 2 Chats)", value=False
+)
 
 if use_chat_history:
     use_vector_store, use_web = False, False
 
-
-
-
 # Instructions
-st.sidebar.markdown("""
+st.sidebar.markdown(
+    """
 ---
 **Instructions:**  
 Get your *Free-API-Key*  
@@ -169,235 +189,176 @@ From **[Groq](https://console.groq.com/keys)**
 
 --- 
 Kheliye *meating - meeting*
-""")
+"""
+)
 
-# API Key Connection to Vector Database with feedback
+# API keys for various services
+api_keys = {
+    "pinecone": "pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx",
+    "google": "AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw",
+    "groq": groq_api_key,
+}
+
+# Initialize vector store and language model if not already in session state
 if "vector_store" not in st.session_state and groq_api_key:
-    pc = Pinecone(api_key="pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx")
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key="AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw")
-    index = pc.Index(index_name)
-    vector_store = PineconeVectorStore(index=index, embedding=embeddings)
-    st.session_state["index_name"]=index_name
+    vector_store = utils.get_vector_store(index_name, api_keys)
     st.session_state["vector_store"] = vector_store
-    st.success(f"Successfully connected to the Vector Database:- {index_name}! let's go...")
+    st.session_state["index_name"] = index_name
+    st.success(
+        f"Successfully connected to the Vector Database: {index_name}! Let's go..."
+    )
 else:
-    vector_store = st.session_state.get("vector_store", None)
+    vector_store = st.session_state.get("vector_store")
 
 
-if "index_name" in st.session_state and st.session_state["index_name"]!=index_name:
-    pc = Pinecone(api_key="pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx")
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key="AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw")
-    index = pc.Index(index_name)
-    vector_store = PineconeVectorStore(index=index, embedding=embeddings)
-    st.session_state["index_name"]=index_name
+if "index_name" in st.session_state and st.session_state["index_name"] != index_name:
+    vector_store = utils.get_vector_store(index_name, api_keys)
     st.session_state["vector_store"] = vector_store
-    st.success(f"Successfully connected to the Vector Database:- {index_name}! let's go...")
+    st.session_state["index_name"] = index_name
+    st.success(
+        f"Successfully connected to the Vector Database: {index_name}! Let's go..."
+    )
 
-# LLM API Key check
 if groq_api_key:
     if "llm" not in st.session_state:
-        llm = ChatGroq(temperature=0.2, model=model, api_key=groq_api_key)
+        llm = utils.get_llm(model, api_keys)
         st.session_state["llm"] = llm
-        st.session_state["model"]=model
-        st.session_state["api_key"]=groq_api_key
+        st.session_state["model"] = model
+        st.session_state["api_key"] = groq_api_key
     else:
         llm = st.session_state["llm"]
-    
+
 if "api_key" in st.session_state and "model" in st.session_state:
     if groq_api_key != st.session_state["api_key"] or model != st.session_state["model"]:
-        llm = ChatGroq(temperature=0.2, model=model, api_key=groq_api_key)
+        llm = utils.get_llm(model, api_keys)
         st.session_state["llm"] = llm
-        st.session_state["model"]=model
-        st.session_state["api_key"]=groq_api_key
+        st.session_state["model"] = model
+        st.session_state["api_key"] = groq_api_key
 
+# Fallback model
+llmx = ChatMistralAI(
+    model="mistral-large-latest",
+    temperature=0.3,
+    api_key="RScM7WQKY4RtCVOOj49MWYqRVQB3zl9Y",
+)
 
-def display_chat_history():
-    for message in st.session_state.messages:
-        if message["role"]=="user":
-            with st.chat_message(message["role"],avatar="👼"):
-                st.write(message["content"])
-        else:
-            with st.chat_message(message["role"],avatar="🧑‍🏫"):
-                st.write(message["content"])
-
-# Function to Clean RAG Data
-def clean_rag_data(query, context, llm):
-    system = """
-        You are a Highly capable Proffesor of understanding the value and context of both user queries and given data. 
-        Your Task for Documents Data is to analyze the list of document's content and properties and find the most important information regarding user's query.
-        Your Task for ChatHistory Data is to analyze the given ChatHistory and then provide a ChatHistory relevant to user's query.
-        Your Task for Web Data is to analyze the web scraped data then summarize only useful data regarding user's query.
-        You Must adhere to User's query before answering.
-        
-        Output:
-            For Document Data
-                Conclusion:
-                    ...
-            For ChatHistory Data
-                    User: ...
-                    ...
-                    Assistant: ...
-            For Web Data
-                Web Scarped Data:
-                ...
-    """
-
-    user = """{context}
-            User's query is given below:
-            {question}
-    """
-
-    filtering_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system),
-            ("user", user)
-        ]
-    )
-
-    filtering_chain = filtering_prompt | llm | StrOutputParser()
-
-    response = filtering_chain.invoke({"context": context, "question": query})
-
-    return response
-
-# Function to Get LLM Data
-def get_llm_data(query, llm):
-    system = """
-        You are a knowledgeable and approachable Computer Science professor with expertise in a wide range of topics.
-        Your role is to provide clear, easy, and engaging explanations to help students understand complex concepts.
-        When answering:
-        - Make it sure to provide the calculations, regarding the solution if there are any.
-        - Start with a high-level overview, then dive into details as needed.
-        - Use examples, analogies, or step-by-step explanations to clarify ideas.
-        - Ensure your answers are accurate, well-structured, and easy to follow.
-        - If you don’t know the answer, acknowledge it and suggest ways to explore or research further.
-    """
-
-    user = """{query}
-    """
-
-    filtering_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system),
-            ("user", user)
-        ]
-    )
-
-    filtering_chain = filtering_prompt | llm | StrOutputParser()
-
-    response = filtering_chain.invoke({"query": query})
-
-    return response
-
-# Function to Get Context Based on Input Query
-def get_context(query):
-    context = ""
-
-    if use_vector_store:
-        with st.spinner(":green[Extracting Data From VectorStore...]"):
-            result = "\n\n".join([_.page_content for _ in vector_store.similarity_search(query, k=3)])
-            clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llm)
-            context += f"Documents Data: \n\n{clean_data}"
-
-    if use_chat_history:
-        with st.spinner(":green[Extracting Data From ChatHistory...]"):
-            last_messages = st.session_state.messages[:-1][-3:]
-            chat_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in last_messages])
-            clean_data = clean_rag_data(query, f"\n\nChat History \n\n{chat_history}", llm)
-            context += f"\n\nChat History: \n\n{clean_data}"
-
-    try:
-        if use_web:
-            with st.spinner(":green[Extracting Data From web...]"):
-                search = DuckDuckGoSearchRun()
-                clean_data = clean_rag_data(query, search.invoke(query), llm)
-                context += f"\n\nWeb Data:\n{clean_data}"
-    except:
-        pass
-
-    if not use_chat_history:
-        with st.spinner(":green[Extracting Data From ChatPPT...]"):
-            context += f"\n\n LLM Data {get_llm_data(query, llm)}"
-
-    return context
-
-# Function to Respond to User Based on Query and Context
-def respond_to_user(query, context, llm):
-    system_prompt = """
-    You are a specialized proffesor of Computer Science Engg. Your job is to answer the given question based on the following types of context: 
-
-    1. **Web Data**: Information retrieved from web searches.
-    2. **Documents Data**: Data extracted from documents (e.g., research papers, reports).
-    3. **Chat History**: Previous interactions or discussions in the current session.
-    4. **LLM Data**: Insights or completions provided by the language model.
-
-    When answering:
-    - When Answering include all important information , as well as key points
-    - Make it sure to provide the calculations, regarding the solution if there are any.
-    - Ensure your response is clear and easy to understand and remember even for a naive person.
-    """
-    user_prompt = """Question: {question} 
-    Context: {context} """
-
-    rag_chain_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_prompt),
-            ("user", user_prompt)
-        ]
-    )
-
-    rag_chain = rag_chain_prompt | llm | StrOutputParser()
-
-    response = rag_chain.invoke({"question": query, "context": context})
-
-    return response
-
-
-def img_to_ques(img,query,model="gemini-1.5-flash"):
-    genai.configure(api_key="AIzaSyBGMk5yhUdGv-Ph5P6Y5rq7F3G56GQJbaw")
-    model = genai.GenerativeModel(model)
-    prompt = f"""Analyze the provided image and the user's query: "{query}". Based on the content of the image:
-
-1. Extract the question from the image, if user wants to asks more question add it to the Question Section.
-2. For any tabular , structured data or mcq or anyother relevant information present in the image, provide it in the "Relevant Information" section.
-
-Format your response as follows:
-
-Question:  
-[Generated question based on the image and query]  
-
-Relevant Information:  
-[Include any tabular data, key details, or insights relevant to solving the problem. Ensure structured data is presented in an easily readable format.]
-
-"""
-    return model.generate_content([prompt, img]).text
-
+# Initialize session state variables
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "last_query" not in st.session_state:
+    st.session_state["last_query"] = "El Gamal"
+
+# Function to display chat history
+def display_chat_history():
+    for message in st.session_state.messages:
+        if message["role"] == "user":
+            with st.chat_message(message["role"], avatar="👼"):
+                st.write(message["content"])
+        else:
+            with st.chat_message(message["role"], avatar="🧑‍🏫"):
+                st.write(message["content"])
+
 display_chat_history()
+
+# Main chat interaction loop
 if groq_api_key:
     with st.container():
         user_inp = multimodal_chatinput()
     with st.container():
         if user_inp:
-            question=""
+            if user_inp == st.session_state["last_query"]:
+                st.stop()
+            else:
+                st.session_state["last_query"] = user_inp
+            video_id = ""
+            question = ""
             if user_inp["images"]:
-                b64_image=user_inp["images"][0].split(",")[-1]
+                b64_image = user_inp["images"][0].split(",")[-1]
                 image = Image.open(io.BytesIO(base64.b64decode(b64_image)))
                 try:
-                    question = img_to_ques(image, user_inp["text"])
+                    question = utils.img_to_ques(image, user_inp["text"])
                 except:
-                    question = img_to_ques(image, user_inp["text"],"gemini-2.0-flash-exp")
-                user_inp["text"]=""
+                    question = utils.img_to_ques(image, user_inp["text"], "gemini-2.0-flash-exp")
+                soln = re.findall(
+                    r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",
+                    user_inp["text"],
+                )
+                for match in soln:
+                    video_id = match[0] or match[1]  # Use the first non-empty part
+                    if video_id:  # Stop at the first valid match
+                        break
+                    else:
+                        video_id = ""
+                user_inp["text"] = ""
+            if not video_id:
+                soln = re.findall(
+                    r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",
+                    user_inp["text"],
+                )
+                for match in soln:
+                    video_id = match[0] or match[1]  # Use the first non-empty part
+                    if video_id:  # Stop at the first valid match
+                        break
+                    else:
+                        video_id = ""
+            st.session_state.messages.append(
+                {"role": "user", "content": question + user_inp["text"]}
+            )
+            with st.spinner(":green[Checking Requirements For Image]"):
+                diagram_required=utils.check_for_diagram(question + user_inp["text"],llmx)
+            if diagram_required.requires_diagram:
+                    with st.spinner(":green[Generating Diagram]"):
+                        try:
+                            images = utils.search_images(diagram_required.search_query, 5)
+                        except Exception as e:
+                            st.warning(f"Unable to Generate Diagram Due to Error: {e}")
+                            images=""
+                    if images:
+                       carousel(images, fade=True, wrap=True, interval=999000)
+            else:
+                st.info("No Diagram Required For This Query")
+            with st.spinner(":green[Processing Youtube Video]"):
+                if video_id:
+                    st.success(
+                        f"!! Youtube Link Found:- {video_id} , Summarizing Video"
+                    )
+                    try:
+                        yt_response = utils.process_youtube(
+                            video_id, question + user_inp["text"], llmx
+                        )
+                    except Exception as e:
+                        yt_response = f"Unable to Process , Youtube Video Due to Transcript not available Error: {e}"
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": yt_response}
+                    )
+                    with st.chat_message("user", avatar="👼"):
+                        st.write(question + user_inp["text"])
+                    with st.chat_message("assistant", avatar="🧑‍🏫"):
+                        st.write(yt_response)            
+            if not video_id:
+                context = utils.get_context(
+                    question + user_inp["text"],
+                    use_vector_store,
+                    vector_store,
+                    use_web,
+                    use_chat_history,
+                    llm,
+                    llmx,
+                    st.session_state.messages,
+                )
+                with st.spinner(":green[Combining jhol jhal...]"):
+                    assistant_response = utils.respond_to_user(
+                        question + user_inp["text"], context, llm
+                    )
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": assistant_response}
+                )
 
-            st.session_state.messages.append({"role": "user", "content": question+user_inp["text"]})
-            context = get_context(question+user_inp["text"])
-            with st.spinner(":green[Combining jhol jhal...]"):
-                assistant_response = respond_to_user(question+user_inp["text"], context, llm)
-            st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                with st.chat_message("user", avatar="👼"):
+                    st.write(question + user_inp["text"])
+                with st.chat_message("assistant", avatar="🧑‍🏫"):
+                    st.write(assistant_response)
 
-            with st.chat_message("user",avatar="👼"):
-                st.write(question+user_inp["text"])
-            with st.chat_message("assistant",avatar="🧑‍🏫"):
-                st.write(assistant_response)
+
+
