@@ -1,3 +1,4 @@
+
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -13,228 +14,320 @@ import base64, io, re, html
 from langchain_mistralai import ChatMistralAI
 import requests as r
 import streamlit as st
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_vector_store(index_name, api_keys):
     """Initializes and returns a Pinecone vector store."""
-    pc = Pinecone(api_key=api_keys["pinecone"])
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", google_api_key=api_keys["google"]
-    )
-    index = pc.Index(index_name)
-    return PineconeVectorStore(index=index, embedding=embeddings)
+    try:
+        pc = Pinecone(api_key=api_keys["pinecone"])
+        embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001", google_api_key=api_keys["google"]
+        )
+        index = pc.Index(index_name)
+        return PineconeVectorStore(index=index, embedding=embeddings)
+    except Exception as e:
+        logger.error(f"Error initializing vector store: {e}")
+        raise
 
 def get_llm(model, api_keys):
     """Initializes and returns a ChatGroq language model."""
-    return ChatGroq(temperature=0.2, model=model, api_key=api_keys["groq"])
+    try:
+        return ChatGroq(temperature=0.2, model=model, api_key=api_keys["groq"])
+    except Exception as e:
+        logger.error(f"Error initializing LLM: {e}")
+        raise
 
 def clean_rag_data(query, context, llm):
     """Cleans and filters RAG data based on the query."""
-    system = """
-        You are a Highly capable Proffesor of understanding the value and context of both user queries and given data. 
-        Your Task for Documents Data is to analyze the list of document's content and properties and find the most important information regarding user's query.
-        Your Task for ChatHistory Data is to analyze the given ChatHistory and then provide a ChatHistory relevant to user's query.
-        Your Task for Web Data is to analyze the web scraped data then summarize only useful data regarding user's query.
-        You Must adhere to User's query before answering.
+    try:
+        system = """
+        You are a highly capable professor with expertise in understanding the value and context of both user queries and given data. 
+        Your task is to analyze the provided data and find the most important information regarding the user's query.
+
+        For Documents Data: Analyze the document content and extract the most relevant information.
+        For ChatHistory Data: Analyze the chat history and provide relevant context.
+        For Web Data: Analyze web scraped data and summarize only useful information.
         
-        Output:
-            For Document Data
-                Conclusion:
-                    ...
-            For ChatHistory Data
-                    User: ...
-                    ...
-                    Assistant: ...
-            For Web Data
-                Web Scarped Data:
-                ...
-    """
-    user = """{context}
-            User's query is given below:
-            {question}
-    """
-    filtering_prompt = ChatPromptTemplate.from_messages(
-        [("system", system), ("user", user)]
-    )
-    filtering_chain = filtering_prompt | llm | StrOutputParser()
-    return filtering_chain.invoke({"context": context, "question": query})
+        You must adhere to the user's query before answering.
+        
+        Output format:
+        For Document Data:
+            Conclusion: [relevant information]
+        For ChatHistory Data:
+            User: [relevant user messages]
+            Assistant: [relevant assistant responses]
+        For Web Data:
+            Web Scraped Data: [summarized relevant information]
+        """
+        
+        user = """Context: {context}
+        User's query: {question}
+        """
+        
+        filtering_prompt = ChatPromptTemplate.from_messages(
+            [("system", system), ("user", user)]
+        )
+        filtering_chain = filtering_prompt | llm | StrOutputParser()
+        return filtering_chain.invoke({"context": context, "question": query})
+    except Exception as e:
+        logger.error(f"Error cleaning RAG data: {e}")
+        return f"Error processing context: {e}"
 
 def get_llm_data(query, llm):
     """Gets a response from the LLM based on the query."""
-    system = """
+    try:
+        system = """
         You are a knowledgeable and approachable Computer Science professor with expertise in a wide range of topics.
         Your role is to provide clear, easy, and engaging explanations to help students understand complex concepts.
+        
         When answering:
-        - Make it sure to provide the calculations, regarding the solution if there are any.
-        - Start with a high-level overview, then dive into details as needed.
-        - Use examples, analogies, or step-by-step explanations to clarify ideas.
-        - Ensure your answers are accurate, well-structured, and easy to follow.
-        - If you don’t know the answer, acknowledge it and suggest ways to explore or research further.
-    """
-    user = "{query}"
-    filtering_prompt = ChatPromptTemplate.from_messages(
-        [("system", system), ("user", user)]
-    )
-    filtering_chain = filtering_prompt | llm | StrOutputParser()
-    return filtering_chain.invoke({"query": query})
+        - Provide calculations and solutions with step-by-step explanations if needed
+        - Start with a high-level overview, then dive into details
+        - Use examples, analogies, or step-by-step explanations to clarify ideas
+        - Ensure your answers are accurate, well-structured, and easy to follow
+        - If you don't know the answer, acknowledge it and suggest ways to explore further
+        """
+        
+        user = "{query}"
+        filtering_prompt = ChatPromptTemplate.from_messages(
+            [("system", system), ("user", user)]
+        )
+        filtering_chain = filtering_prompt | llm | StrOutputParser()
+        return filtering_chain.invoke({"query": query})
+    except Exception as e:
+        logger.error(f"Error getting LLM data: {e}")
+        return f"Error generating response: {e}"
 
-def get_context(query, use_vector_store,vector_store, use_web, use_chat_history, llm, llmx, messages):
+def get_context(query, use_vector_store, vector_store, use_web, use_chat_history, llm, llmx, messages):
     """Retrieves and processes context from various sources."""
     context = ""
-    if use_vector_store:
-        with st.spinner(":green[Extracting Data From VectorStore...]"):
-            result = "\n\n".join(
-                [_.page_content for _ in vector_store.similarity_search(query, k=3)]
-            )
-            clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llmx)
-            context += f"Documents Data: \n\n{clean_data}"
+    
+    # Vector store data
+    if use_vector_store and vector_store:
+        try:
+            with st.spinner("📚 Extracting data from vector store..."):
+                search_results = vector_store.similarity_search(query, k=3)
+                result = "\n\n".join([doc.page_content for doc in search_results])
+                if result.strip():
+                    clean_data = clean_rag_data(query, f"Documents Data \n\n{result}", llmx or llm)
+                    context += f"Documents Data: \n\n{clean_data}"
+        except Exception as e:
+            logger.error(f"Error retrieving vector store data: {e}")
+            st.warning(f"Error accessing document database: {e}")
 
-    if use_chat_history:
-        with st.spinner(":green[Extracting Data From ChatHistory...]"):
-            last_messages = messages[:-3][-5:]
-            chat_history = "\n".join(
-                [f"{msg['role']}: {msg['content']}" for msg in last_messages]
-            )
-            clean_data = clean_rag_data(
-                query, f"\n\nChat History \n\n{chat_history}", llmx
-            )
-            context += f"\n\nChat History: \n\n{clean_data}"
+    # Chat history data
+    if use_chat_history and messages:
+        try:
+            with st.spinner("💬 Extracting data from chat history..."):
+                last_messages = messages[:-1][-5:]  # Get last 5 messages excluding current
+                if last_messages:
+                    chat_history = "\n".join(
+                        [f"{msg['role']}: {msg['content']}" for msg in last_messages]
+                    )
+                    clean_data = clean_rag_data(
+                        query, f"\n\nChat History \n\n{chat_history}", llmx or llm
+                    )
+                    context += f"\n\nChat History: \n\n{clean_data}"
+        except Exception as e:
+            logger.error(f"Error processing chat history: {e}")
+            st.warning(f"Error processing chat history: {e}")
 
-    try:
-        if use_web:
-            with st.spinner(":green[Extracting Data From web...]"):
+    # Web search data
+    if use_web:
+        try:
+            with st.spinner("🌐 Searching the web..."):
                 search = DuckDuckGoSearchRun()
-                clean_data = clean_rag_data(query, search.invoke(query), llm)
-                context += f"\n\nWeb Data:\n{clean_data}"
-    except Exception as e:
-        pass
+                search_results = search.invoke(query)
+                if search_results.strip():
+                    clean_data = clean_rag_data(query, search_results, llm)
+                    context += f"\n\nWeb Data:\n{clean_data}"
+        except Exception as e:
+            logger.error(f"Error performing web search: {e}")
+            st.warning(f"Web search unavailable: {e}")
 
+    # LLM generated data
     if not use_chat_history:
-        with st.spinner(":green[Extracting Data From ChatPPT...]"):
-            context += f"\n\n LLM Data {get_llm_data(query, llm)}"
+        try:
+            with st.spinner("🧠 Generating additional insights..."):
+                llm_data = get_llm_data(query, llm)
+                context += f"\n\nLLM Data: {llm_data}"
+        except Exception as e:
+            logger.error(f"Error generating LLM data: {e}")
+            st.warning(f"Error generating additional insights: {e}")
 
     return context
 
 def respond_to_user(query, context, llm):
     """Generates a response to the user based on the query and context."""
-    system_prompt = """
-    You are a specialized proffesor of Computer Science Engg. Your job is to answer the given question based on the following types of context: 
+    try:
+        system_prompt = """
+        You are a specialized professor of Computer Science Engineering. Your job is to answer the given question based on the provided context.
 
-    1. **Web Data**: Information retrieved from web searches.
-    2. **Documents Data**: Data extracted from documents (e.g., research papers, reports).
-    3. **Chat History**: Previous interactions or discussions in the current session.
-    4. **LLM Data**: Insights or completions provided by the language model.
+        The context may include:
+        1. Web Data: Information retrieved from web searches
+        2. Documents Data: Data extracted from documents and research papers
+        3. Chat History: Previous interactions in the current session
+        4. LLM Data: Insights provided by the language model
 
-    When answering:
-    - When Answering include all important information , as well as key points
-    - Make it sure to provide the calculations, regarding the solution if there are any.
-    - Ensure your response is clear and easy to understand and remember even for a naive person.
-    """
-    user_prompt = """Question: {question} 
-    Context: {context} """
-    rag_chain_prompt = ChatPromptTemplate.from_messages(
-        [("system", system_prompt), ("user", user_prompt)]
-    )
-    rag_chain = rag_chain_prompt | llm | StrOutputParser()
-    return rag_chain.invoke({"question": query, "context": context})
+        When answering:
+        - Include all important information and key points
+        - Provide calculations and step-by-step solutions when needed
+        - Ensure your response is clear and easy to understand
+        - Make explanations accessible even for beginners
+        - Structure your response logically with proper formatting
+        """
+        
+        user_prompt = """Question: {question} 
+        Context: {context}"""
+        
+        rag_chain_prompt = ChatPromptTemplate.from_messages(
+            [("system", system_prompt), ("user", user_prompt)]
+        )
+        rag_chain = rag_chain_prompt | llm | StrOutputParser()
+        return rag_chain.invoke({"question": query, "context": context})
+    except Exception as e:
+        logger.error(f"Error generating response: {e}")
+        return f"I apologize, but I encountered an error while generating a response: {e}"
 
 def html_entity_cleanup(text):
-    # Replace common HTML entities
-    return re.sub(r'&amp;', '&', 
-           re.sub(r'&lt;', '<', 
-           re.sub(r'&gt;', '>', 
-           re.sub(r'&quot;', '"', 
-           re.sub(r'&#39;', "'", text)))))
+    """Replace common HTML entities with their text equivalents."""
+    try:
+        # Replace common HTML entities
+        text = html.unescape(text)
+        # Additional cleanup for specific entities
+        replacements = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#39;': "'",
+            '&nbsp;': ' '
+        }
+        for entity, replacement in replacements.items():
+            text = text.replace(entity, replacement)
+        return text
+    except Exception as e:
+        logger.error(f"Error cleaning HTML entities: {e}")
+        return text
 
 def yT_transcript(link):
     """Fetches the transcript of a YouTube video."""
-    url = "https://youtubetotranscript.com/transcript"
-    payload = {"youtube_url": link}
-    response = r.post(url, data=payload).text
-    return " ".join(
-        [
-            html_entity_cleanup(i)
-            for i in re.findall(
-                r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*<\/span>', response
-            )])
+    try:
+        url = "https://youtubetotranscript.com/transcript"
+        payload = {"youtube_url": link}
+        
+        response = r.post(url, data=payload, timeout=30)
+        response.raise_for_status()
+        
+        # Extract transcript segments
+        segments = re.findall(
+            r'class="transcript-segment"[^>]*>\s*([\S ]*?\S)\s*</span>', 
+            response.text
+        )
+        
+        if not segments:
+            raise ValueError("No transcript segments found")
+        
+        # Clean and join segments
+        cleaned_segments = [html_entity_cleanup(segment) for segment in segments]
+        return " ".join(cleaned_segments)
+    
+    except Exception as e:
+        logger.error(f"Error fetching YouTube transcript: {e}")
+        raise
 
 def process_youtube(video_id, original_text, llmx):
     """Processes a YouTube video transcript and answers a query."""
-    transcript = yT_transcript(f"https://www.youtube.com/watch?v={video_id}")
+    try:
+        transcript = yT_transcript(f"https://www.youtube.com/watch?v={video_id}")
+        
+        if not transcript or len(transcript.strip()) == 0:
+            raise ValueError("Empty transcript received")
+        
+        system_prompt = """
+        You are an Explainer Bot, a highly intelligent assistant designed to analyze YouTube video transcripts and respond comprehensively to user queries.
+
+        **Your Role:**
+        - Analyze video transcripts that may contain informal language, repetitions, or filler words
+        - Provide explanations tailored to the user's specific needs
+        - Maintain a clear, professional, and approachable tone
+
+        **Task:**
+        1. Address the user's specific query using the provided transcript
+        2. If the query includes a YouTube link, focus on the video content while addressing other parts of the query
+        3. Provide context for technical or specialized content when necessary
+        4. Structure your response clearly using appropriate formatting
+
+        **Guidelines:**
+        - Use **Markdown** format only (no LaTeX)
+        - Provide examples when requested or when they enhance understanding
+        - Offer detailed explanations while maintaining clarity
+        - Keep summaries comprehensive yet focused
+        - Use simple, clear language accessible to a broad audience
+        - Always respond in English
+
+        Focus on accuracy, clarity, and relevance to the user's query.
+        """
+
+        user_prompt = """
+        Transcription: {transcription}
+        
+        User's Query: {query}
+        """
+        
+        rag_chain_prompt = ChatPromptTemplate.from_messages(
+            [("system", system_prompt), ("user", user_prompt)]
+        )
+        rag_chain = rag_chain_prompt | llmx | StrOutputParser()
+        response = rag_chain.invoke({"transcription": transcript, "query": original_text})
+        return response
     
-    if len(transcript) == 0:
-        raise IndexError
-    system_prompt = """
-You are Explainer Bot, a highly intelligent and efficient assistant designed to analyze YouTube video transcripts and respond comprehensively to user queries. You excel at providing explanations tailored to the user’s needs, whether they seek examples, detailed elaboration, or specific insights.
-
-**Persona:**
-- You are approachable, insightful, and skilled at tailoring responses to diverse user requests.
-- You aim to provide explanations that capture the essence of the video, ensuring a balance between clarity and depth.
-- Your tone is clear, neutral, and professional, ensuring readability and understanding for a broad audience.
-
-**Task:**
-1. Analyze the provided video transcript, which may contain informal language, repetitions, or filler words. Your job is to:
-   - Address the user’s specific query, such as providing examples, detailed explanations, or focused insights.
-   - Retain the most critical information and adapt your response style accordingly.
-2. If the user query contains a YouTube link, do not panic. Use the already provided transcript of the video to answer the query. Ensure your response addresses both the content of the video and any additional parts of the user’s query.
-3. If the video includes technical or specialized content, provide brief context or explanations where necessary to enhance comprehension.
-4. Maintain an organized structure using bullet points, paragraphs, or sections based on the user’s query.
-
-**Additional Inputs:**
-- When answering:
-  - If the user requests examples, include relevant examples or anecdotes from the transcript or generate illustrative examples.
-  - If the user requests a detailed explanation, expand on the key points, ensuring no critical information is lost.
-  - If the user’s query requires a summary, condense the content into a clear, concise explanation while retaining the key messages.
-  - Always address the user’s specific needs while keeping the overall purpose of the video in focus.
-
-**Output Style:**
-- Always respond using **Markdown** format, avoiding LaTeX or any other non-Markdown formatting.
-  - Avoid using any LaTeX symbols or complex formatting.
-  - Ensure your response is easy to read and compatible with a frontend that supports Markdown.
-- Tailor the response to the user’s request:
-  - Provide examples when explicitly asked or when they are available in the transcript.
-  - Offer detailed and comprehensive explanations if required.
-  - Keep summaries comprehensive and focused if brevity is requested.
-- Use simple, clear sentences to cater to a broad audience.
-- Avoid jargon unless it is crucial to the video's context, and provide a brief explanation if used.
-- Always answer in English only.
-
-Act as a skilled Professor, ensuring accuracy, brevity, and clarity while retaining the original context and intent of the video. Adjust your tone and structure to match the user’s specific query and expectations. If a YouTube link is part of the user query, use the transcript you already have to address the video-related aspects of the question seamlessly.
-"""
-
-    user_prompt = """
-Transcription:
-{transcription}
-
-User's Query:
-{query}
-"""
-    rag_chain_prompt = ChatPromptTemplate.from_messages(
-        [("system", system_prompt), ("user", user_prompt)]
-    )
-    rag_chain = rag_chain_prompt | llmx | StrOutputParser()
-    response = rag_chain.invoke({"transcription": transcript, "query": original_text})
-    return response
+    except Exception as e:
+        logger.error(f"Error processing YouTube video: {e}")
+        return f"I apologize, but I couldn't process the YouTube video. Error: {e}"
 
 def img_to_ques(img, query, model="gemini-1.5-flash"):
     """Extracts a question and relevant information from an image."""
-    genai.configure(api_key="AIzaSyBkssLWrVkGHVa8Z5eC2c8snijh_X8d8ho")
-    model = genai.GenerativeModel(model)
-    prompt = f"""Analyze the provided image and the user's query: "{query}". Based on the content of the image:
+    try:
+        genai.configure(api_key="AIzaSyBkssLWrVkGHVa8Z5eC2c8snijh_X8d8ho")
+        model_instance = genai.GenerativeModel(model)
+        
+        prompt = f"""Analyze the provided image and the user's query: "{query}". 
 
-1. Extract the question from the image, if user wants to asks more question add it to the Question Section.
-2. For any tabular , structured data or mcq or anyother relevant information present in the image, provide it in the "Relevant Information" section.
+        Based on the content of the image:
+        1. Extract or formulate the main question from the image
+        2. If the user wants to ask additional questions, include them in the Question section
+        3. For any tabular data, structured information, MCQs, or other relevant details present in the image, provide them in the "Relevant Information" section
 
-Format your response as follows:
+        Format your response as follows:
 
-Question:  
-[Generated question based on the image and query]  
+        Question:  
+        [Generated question based on the image and query]  
 
-Relevant Information:  
-[Include any tabular data, key details relevant to solving the problem but it should only come from attached image .If no relevant information is present in image don't add by yourself. 
-Ensure structured data is presented in an easily readable format.]
+        Relevant Information:  
+        [Include any tabular data, key details, or structured information from the image that's relevant to solving the problem. Only include information that's actually visible in the image. If no relevant information is present, state "No additional structured information found in the image."]
+        """
+        
+        response = model_instance.generate_content([prompt, img])
+        return response.text
+    
+    except Exception as e:
+        logger.error(f"Error processing image: {e}")
+        return f"Question: {query}\n\nRelevant Information: Unable to process image due to error: {e}"
 
-"""
-    return model.generate_content([prompt, img]).text
+class DiagramCheck(BaseModel):
+    requires_diagram: bool = Field(
+        ...,
+        description="True if the user's question needs a diagram or image for explanation or solution, False otherwise.",
+    )
+    search_query: str = Field(
+        "",
+        description="A relevant search query to find the required diagram or image, if needed.",
+    )
 
 
 
