@@ -12,6 +12,7 @@ import utils
 # Streamlit Configuration and Styling
 st.set_page_config(page_title="Bhala Manus", page_icon="🌟")
 
+# Define CSS styles
 css = """
 <style>
 /* Make header background transparent */
@@ -39,26 +40,7 @@ css = """
         background-position: 0% 0%;
     }
 }
-</style>
 
-"""
-st.markdown(css, unsafe_allow_html=True)
-
-# HTML content
-html = """
-<section id="up"></section>
-<section id="down"></section>
-<section id="left"></section>
-<section id="right"></section>
-"""
-
-def render_frontend():
-    st.markdown(css, unsafe_allow_html=True)
-    st.markdown(html, unsafe_allow_html=True)
-
-st.markdown(
-    """
-<style>
 .main {
     font-family: 'Arial', sans-serif;
     background-color: #454545;
@@ -98,41 +80,41 @@ st.markdown(
 .stChatMessage > div {
     border-radius: 12px;
     padding: 12px;
-    margin: 8px 0; /* General spacing for top and bottom */
+    margin: 8px 0;
     font-family: "Arial", sans-serif;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* User messages (Dark with 60% opacity, right indent) */
+/* User messages */
 .stChatMessage > div.user {
-    background-color: rgba(13, 9, 10, 0.6); /* Smoky Black with 60% opacity */
-    color: #EAF2EF; /* Mint Cream for text contrast */
-    border-left: 4px solid #361F27; /* Dark Purple accent */
-    margin-left: 32px; /* General left margin */
-    margin-right: 64px; /* Right indent for user messages */
+    background-color: rgba(13, 9, 10, 0.6);
+    color: #EAF2EF;
+    border-left: 4px solid #361F27;
+    margin-left: 32px;
+    margin-right: 64px;
 }
 
-/* Assistant messages (Light Lavender with 40% opacity, left indent) */
+/* Assistant messages */
 .stChatMessage > div.assistant {
-    background-color: rgba(70, 40, 90, 0.6); /* Royal purple for assistant messages */
-    color: #F5D7FF; /* Lavender text for a softer, friendly vibe */
+    background-color: rgba(70, 40, 90, 0.6);
+    color: #F5D7FF;
     border-left: 4px solid #BB8FCE;
-    margin-left: 64px; /* Left indent for assistant messages */
-    margin-right: 32px; /* General right margin */
+    margin-left: 64px;
+    margin-right: 32px;
 }
 
-/* Hover effects for smooth interaction */
+/* Hover effects */
 .stChatMessage > div:hover {
     transform: scale(1.005);
     transition: transform 0.2s ease-in-out;
 }
-
 </style>
-""",
-    unsafe_allow_html=True,
-)
+"""
 
-# Header and message below it
+# Apply CSS
+st.markdown(css, unsafe_allow_html=True)
+
+# Header and message
 st.markdown(
     '<div class="header">🌟No Back Abhiyan </div>', unsafe_allow_html=True
 )
@@ -141,16 +123,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Sidebar and configuration
+# Sidebar configuration
 st.sidebar.markdown(
     """<h3 style="color: cyan;">Configuration</h3>""", unsafe_allow_html=True
 )
+
+# Sidebar inputs
 index_name = st.sidebar.selectbox(
-    "Doc Name", options=["cc-docs","ann-docs", "dbms-docs"], index=0, help="Select the name of the Documents to use."
+    "Doc Name", 
+    options=["cc-docs", "ann-docs", "dbms-docs"], 
+    index=0, 
+    help="Select the name of the Documents to use."
 )
+
 groq_api_key = st.sidebar.text_input(
-    "LLM API Key", type="password", help="Enter your groq API key."
+    "LLM API Key", 
+    type="password", 
+    help="Enter your groq API key."
 )
+
 model = st.sidebar.selectbox(
     "Select Model",
     options=[
@@ -162,6 +153,8 @@ model = st.sidebar.selectbox(
     index=0,
     help="Select the model to use for LLM inference.",
 )
+
+# Check for API key
 if not groq_api_key:
     st.sidebar.markdown(
         "<p style='color: #f44336;'>Please enter the LLM API key to proceed!</p>",
@@ -169,7 +162,9 @@ if not groq_api_key:
     )
     st.warning("Please enter the LLM API key to proceed!")
     st.write('''**Find your Key [Groq](https://console.groq.com/keys)**''')
-    
+    st.stop()  # Stop execution if no API key
+
+# Configuration checkboxes
 use_web = st.sidebar.checkbox("Allow Internet Access", value=True)
 use_vector_store = st.sidebar.checkbox("Use Documents", value=True)
 use_chat_history = st.sidebar.checkbox(
@@ -192,62 +187,56 @@ Kheliye *meating - meeting*
 """
 )
 
-# API keys for various services
+# API keys dictionary
 api_keys = {
     "pinecone": "pcsk_6KAu86_9Zzepx9S1VcDmLRmBSUUNpPf4JRbE4BaoVmk36yW9R4nkjutPiZ3AjZvcyL4MVx",
     "google": "AIzaSyARa0MF9xC5YvKWnGCEVI4Rgp0LByvYpHw",
     "groq": groq_api_key,
 }
 
-# Initialize vector store and language model if not already in session state
-if "vector_store" not in st.session_state and groq_api_key:
-    vector_store = utils.get_vector_store(index_name, api_keys)
-    st.session_state["vector_store"] = vector_store
-    st.session_state["index_name"] = index_name
-    st.success(
-        f"Successfully connected to the Vector Database: {index_name}! Let's go..."
-    )
-else:
-    vector_store = st.session_state.get("vector_store")
-
-
-if "index_name" in st.session_state and st.session_state["index_name"] != index_name:
-    vector_store = utils.get_vector_store(index_name, api_keys)
-    st.session_state["vector_store"] = vector_store
-    st.session_state["index_name"] = index_name
-    st.success(
-        f"Successfully connected to the Vector Database: {index_name}! Let's go..."
-    )
-
-if groq_api_key:
-    if "llm" not in st.session_state:
-        llm = utils.get_llm(model, api_keys)
-        st.session_state["llm"] = llm
-        st.session_state["model"] = model
-        st.session_state["api_key"] = groq_api_key
-    else:
-        llm = st.session_state["llm"]
-
-if "api_key" in st.session_state and "model" in st.session_state:
-    if groq_api_key != st.session_state["api_key"] or model != st.session_state["model"]:
-        llm = utils.get_llm(model, api_keys)
-        st.session_state["llm"] = llm
-        st.session_state["model"] = model
-        st.session_state["api_key"] = groq_api_key
-
-# Fallback model
-llmx = ChatMistralAI(
-    model="mistral-large-latest",
-    temperature=0.3,
-    api_key="RScM7WQKY4RtCVOOj49MWYqRVQB3zl9Y",
-)
-
 # Initialize session state variables
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "last_query" not in st.session_state:
-    st.session_state["last_query"] = "El Gamal"
+    st.session_state["last_query"] = ""
+
+# Initialize vector store
+@st.cache_resource
+def initialize_vector_store(index_name, api_keys):
+    try:
+        return utils.get_vector_store(index_name, api_keys)
+    except Exception as e:
+        st.error(f"Error initializing vector store: {e}")
+        return None
+
+# Initialize LLM
+@st.cache_resource
+def initialize_llm(model, api_keys):
+    try:
+        return utils.get_llm(model, api_keys)
+    except Exception as e:
+        st.error(f"Error initializing LLM: {e}")
+        return None
+
+# Get or initialize vector store
+vector_store = initialize_vector_store(index_name, api_keys)
+if vector_store:
+    st.success(f"Successfully connected to the Vector Database: {index_name}!")
+
+# Get or initialize LLM
+llm = initialize_llm(model, api_keys)
+
+# Fallback model
+try:
+    llmx = ChatMistralAI(
+        model="mistral-large-latest",
+        temperature=0.3,
+        api_key="RScM7WQKY4RtCVOOj49MWYqRVQB3zl9Y",
+    )
+except Exception as e:
+    st.error(f"Error initializing fallback model: {e}")
+    llmx = None
 
 # Function to display chat history
 def display_chat_history():
@@ -259,106 +248,159 @@ def display_chat_history():
             with st.chat_message(message["role"], avatar="🧑‍🏫"):
                 st.write(message["content"])
 
+# Display existing chat history
 display_chat_history()
 
-# Main chat interaction loop
-if groq_api_key:
-    with st.container():
+# Main chat interaction
+if groq_api_key and llm:
+    try:
+        # Get user input
         user_inp = multimodal_chatinput()
-    with st.container():
+        
         if user_inp:
-            if user_inp == st.session_state["last_query"]:
+            # Check for duplicate queries
+            current_query = str(user_inp.get("text", "")) + str(len(user_inp.get("images", [])))
+            if current_query == st.session_state["last_query"]:
                 st.stop()
             else:
-                st.session_state["last_query"] = user_inp
+                st.session_state["last_query"] = current_query
+            
+            # Initialize variables
             video_id = ""
             question = ""
-            if user_inp["images"]:
-                b64_image = user_inp["images"][0].split(",")[-1]
-                image = Image.open(io.BytesIO(base64.b64decode(b64_image)))
+            
+            # Process images if present
+            if user_inp.get("images"):
                 try:
-                    question = utils.img_to_ques(image, user_inp["text"])
-                except:
-                    question = utils.img_to_ques(image, user_inp["text"], "gemini-2.0-flash-exp")
-                soln = re.findall(
-                    r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",
-                    user_inp["text"],
-                )
-                for match in soln:
-                    video_id = match[0] or match[1]  # Use the first non-empty part
-                    if video_id:  # Stop at the first valid match
-                        break
-                    else:
-                        video_id = ""
-                user_inp["text"] = ""
-            if not video_id:
-                soln = re.findall(
-                    r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?",
-                    user_inp["text"],
-                )
-                for match in soln:
-                    video_id = match[0] or match[1]  # Use the first non-empty part
-                    if video_id:  # Stop at the first valid match
-                        break
-                    else:
-                        video_id = ""
-            st.session_state.messages.append(
-                {"role": "user", "content": question + user_inp["text"]}
-            )
-            with st.spinner(":green[Checking Requirements For Image]"):
-                diagram_required=utils.check_for_diagram(question + user_inp["text"],llmx)
-            if diagram_required.requires_diagram:
-                    with st.spinner(":green[Generating Diagram]"):
-                        try:
-                            images = utils.search_images(diagram_required.search_query, 5)
-                        except Exception as e:
-                            st.warning(f"Unable to Generate Diagram Due to Error: {e}")
-                            images=""
-                    if images:
-                       carousel(images, fade=True, wrap=True, interval=999000)
-            else:
-                st.info("No Diagram Required For This Query")
-            with st.spinner(":green[Processing Youtube Video]"):
-                if video_id:
-                    st.success(
-                        f"!! Youtube Link Found:- {video_id} , Summarizing Video"
-                    )
+                    b64_image = user_inp["images"][0].split(",")[-1]
+                    image = Image.open(io.BytesIO(base64.b64decode(b64_image)))
+                    
+                    # Extract question from image
                     try:
-                        yt_response = utils.process_youtube(
-                            video_id, question + user_inp["text"], llmx
-                        )
+                        question = utils.img_to_ques(image, user_inp.get("text", ""))
                     except Exception as e:
-                        yt_response = f"Unable to Process , Youtube Video Due to Transcript not available Error: {e}"
+                        st.warning(f"Error processing image: {e}")
+                        try:
+                            question = utils.img_to_ques(image, user_inp.get("text", ""), "gemini-2.0-flash-exp")
+                        except Exception as e2:
+                            st.error(f"Failed to process image with fallback: {e2}")
+                            question = user_inp.get("text", "")
+                    
+                    # Look for YouTube links in text
+                    youtube_pattern = r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?"
+                    matches = re.findall(youtube_pattern, user_inp.get("text", ""))
+                    for match in matches:
+                        video_id = match[0] or match[1]
+                        if video_id:
+                            break
+                    
+                    user_inp["text"] = ""
+                except Exception as e:
+                    st.error(f"Error processing image input: {e}")
+                    question = user_inp.get("text", "")
+            
+            # Look for YouTube links if not found in image processing
+            if not video_id and user_inp.get("text"):
+                youtube_pattern = r"(?:https://www\.youtube\.com/watch\?v=([^&\n]+))?(?:https://youtu.be/([^\?\n]+))?"
+                matches = re.findall(youtube_pattern, user_inp["text"])
+                for match in matches:
+                    video_id = match[0] or match[1]
+                    if video_id:
+                        break
+            
+            # Combine question and text
+            full_query = question + user_inp.get("text", "")
+            
+            # Add user message to chat history
+            st.session_state.messages.append(
+                {"role": "user", "content": full_query}
+            )
+            
+            # Check for diagram requirement
+            if llmx:
+                try:
+                    with st.spinner("🔍 Checking if diagram is needed..."):
+                        diagram_required = utils.check_for_diagram(full_query, llmx)
+                    
+                    if diagram_required.requires_diagram:
+                        with st.spinner("📊 Generating diagram..."):
+                            try:
+                                images = utils.search_images(diagram_required.search_query, 5)
+                                if images:
+                                    carousel(images, fade=True, wrap=True, interval=999000)
+                                else:
+                                    st.info("No relevant diagrams found.")
+                            except Exception as e:
+                                st.warning(f"Unable to generate diagram: {e}")
+                    else:
+                        st.info("No diagram required for this query.")
+                except Exception as e:
+                    st.warning(f"Error checking diagram requirement: {e}")
+            
+            # Process YouTube video if found
+            if video_id:
+                with st.spinner("🎥 Processing YouTube video..."):
+                    st.success(f"YouTube video found: {video_id}")
+                    try:
+                        if llmx:
+                            yt_response = utils.process_youtube(video_id, full_query, llmx)
+                        else:
+                            yt_response = "Unable to process YouTube video: Fallback model not available."
+                    except Exception as e:
+                        yt_response = f"Unable to process YouTube video: {e}"
+                    
+                    # Add response to chat history
                     st.session_state.messages.append(
                         {"role": "assistant", "content": yt_response}
                     )
+                    
+                    # Display messages
                     with st.chat_message("user", avatar="👼"):
-                        st.write(question + user_inp["text"])
+                        st.write(full_query)
                     with st.chat_message("assistant", avatar="🧑‍🏫"):
-                        st.write(yt_response)            
-            if not video_id:
-                context = utils.get_context(
-                    question + user_inp["text"],
-                    use_vector_store,
-                    vector_store,
-                    use_web,
-                    use_chat_history,
-                    llm,
-                    llmx,
-                    st.session_state.messages,
-                )
-                with st.spinner(":green[Combining jhol jhal...]"):
-                    assistant_response = utils.respond_to_user(
-                        question + user_inp["text"], context, llm
+                        st.write(yt_response)
+            
+            # Process regular query (non-YouTube)
+            else:
+                try:
+                    # Get context
+                    context = utils.get_context(
+                        full_query,
+                        use_vector_store,
+                        vector_store,
+                        use_web,
+                        use_chat_history,
+                        llm,
+                        llmx,
+                        st.session_state.messages,
                     )
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": assistant_response}
-                )
+                    
+                    # Generate response
+                    with st.spinner("🤔 Thinking..."):
+                        assistant_response = utils.respond_to_user(full_query, context, llm)
+                    
+                    # Add response to chat history
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": assistant_response}
+                    )
+                    
+                    # Display messages
+                    with st.chat_message("user", avatar="👼"):
+                        st.write(full_query)
+                    with st.chat_message("assistant", avatar="🧑‍🏫"):
+                        st.write(assistant_response)
+                        
+                except Exception as e:
+                    st.error(f"Error processing query: {e}")
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": f"Sorry, I encountered an error: {e}"}
+                    )
+    
+    except Exception as e:
+        st.error(f"Unexpected error in main chat loop: {e}")
+        st.write("Please refresh the page and try again.")
 
-                with st.chat_message("user", avatar="👼"):
-                    st.write(question + user_inp["text"])
-                with st.chat_message("assistant", avatar="🧑‍🏫"):
-                    st.write(assistant_response)
-
-
-
+elif not groq_api_key:
+    st.info("Please enter your Groq API key in the sidebar to start chatting.")
+else:
+    st.error("Failed to initialize the language model. Please check your API key and try again.")
