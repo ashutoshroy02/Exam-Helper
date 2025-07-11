@@ -319,17 +319,6 @@ def img_to_ques(img, query, model="gemini-1.5-flash"):
         logger.error(f"Error processing image: {e}")
         return f"Question: {query}\n\nRelevant Information: Unable to process image due to error: {e}"
 
-class DiagramCheck(BaseModel):
-    requires_diagram: bool = Field(
-        ...,
-        description="True if the user's question needs a diagram or image for explanation or solution, False otherwise.",
-    )
-    search_query: str = Field(
-        "",
-        description="A relevant search query to find the required diagram or image, if needed.",
-    )
-
-
 
 class DiagramCheck(BaseModel):
     requires_diagram: bool = Field(
