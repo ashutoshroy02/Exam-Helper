@@ -4,10 +4,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from pinecone import Pinecone
 from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
-from langchain_community.tools import DuckDuckGoSearchRun
+# from langchain_community.tools import DuckDuckGoSearchRun
 import google.generativeai as genai
 from langchain_pinecone import PineconeVectorStore
-from pydantic import BaseModel, Field
+# from pydantic import BaseModel, Field
 from duckduckgo_search import DDGS
 
 import base64, io, re, html
